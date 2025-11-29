@@ -1,10 +1,20 @@
 {
   "fmt": {
     "url": "https://github.com/fmtlib/fmt.git",
-    "description": "A modern formatting library for C++"
+    "description": "A modern formatting library for C++",
+    "versions": {
+      "10.1.0": "10.1.0",
+      "latest": "master"
+    },
+    "dependencies": []
   },
   "json": {
     "url": "https://github.com/nlohmann/json.git",
-    "description": "JSON for Modern C++"
+    "description": "JSON for Modern C++",
+    "versions": {
+      "3.11.2": "v3.11.2",
+      "latest": "develop"
+    },
+    "dependencies": []
   }
 }
