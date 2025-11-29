@@ -1,3 +1,4 @@
+{
   "fmt": {
     "url": "https://github.com/fmtlib/fmt.git",
     "description": "A modern formatting library for C++",
@@ -16,3 +17,4 @@
     },
     "dependencies": []
   },
+}
