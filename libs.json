@@ -1,0 +1,10 @@
+{
+  "fmt": {
+    "url": "https://github.com/fmtlib/fmt.git",
+    "description": "A modern formatting library for C++"
+  },
+  "json": {
+    "url": "https://github.com/nlohmann/json.git",
+    "description": "JSON for Modern C++"
+  }
+}
