@@ -1,16 +1,34 @@
-import json, subprocess, os, sys, re
-import urllib.request
+import json, subprocess, os, sys, re, urllib.request, urllib.error
 
-REGISTRY_URL = "https://raw.githubusercontent.com/yourusername/cpp-pip-registry/main/packages.json"
+# --- Configuration ---
+REGISTRY_URL = "https://raw.githubusercontent.com/Aleksander-Sapieha/Pylib/main/libs.json"
 LIBS_DIR = "libs"
 CMAKE_FILE = "CMakeLists.txt"
 
+# --- Helper functions ---
+
+def fetch_url(url):
+    """Fetch content from a URL, handle redirects and decode properly"""
+    try:
+        with urllib.request.urlopen(url) as response:
+            return response.read().decode("utf-8")
+    except urllib.error.URLError as e:
+        print(f"Error fetching URL: {e}")
+        sys.exit(1)
+
 def load_registry():
-    print("Fetching package registry...")
-    with urllib.request.urlopen(REGISTRY_URL) as response:
-        return json.load(response)
+    """Load the JSON registry from remote URL"""
+    print("Fetching remote registry...")
+    text = fetch_url(REGISTRY_URL)
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        print("Failed to parse JSON from registry. Here's the content fetched:")
+        print(text[:500])  # print first 500 chars
+        sys.exit(1)
 
 def get_main_target():
+    """Try to detect the main target from CMakeLists.txt"""
     if not os.path.exists(CMAKE_FILE):
         return None
     with open(CMAKE_FILE) as f:
@@ -21,6 +39,7 @@ def get_main_target():
     return None
 
 def update_cmake(pkg_name):
+    """Add the library to CMakeLists.txt automatically"""
     if not os.path.exists(CMAKE_FILE):
         print(f"{CMAKE_FILE} not found. Skipping CMake integration.")
         return
@@ -34,51 +53,66 @@ def update_cmake(pkg_name):
         f.write(f"target_link_libraries({target} PRIVATE {pkg_name})\n")
     print(f"{pkg_name} linked to target '{target}' in {CMAKE_FILE}")
 
-def install_package(pkg_name, packages):
+def install_package(pkg_name, version="latest", packages=None, installed=None):
+    """Install a package (and dependencies)"""
+    if installed is None:
+        installed = set()
+    if pkg_name in installed:
+        return
     if pkg_name not in packages:
         print(f"Package '{pkg_name}' not found in registry.")
         return
-    url = packages[pkg_name]['url']
-    dest = os.path.join(LIBS_DIR, pkg_name)
-    if os.path.exists(dest):
-        print(f"{pkg_name} is already installed. Use 'update {pkg_name}' to refresh.")
-        return
-    os.makedirs(LIBS_DIR, exist_ok=True)
-    print(f"Installing {pkg_name} from {url}...")
-    subprocess.run(["git", "clone", url, dest])
-    print(f"{pkg_name} installed in {dest}!")
-    update_cmake(pkg_name)
 
-def update_package(pkg_name):
+    info = packages[pkg_name]
+    # Install dependencies first
+    for dep in info.get("dependencies", []):
+        install_package(dep, "latest", packages, installed)
+
+    url = info['url']
+    versions = info.get("versions", {})
+    commit = versions.get(version, versions.get("latest", "master"))
     dest = os.path.join(LIBS_DIR, pkg_name)
-    if not os.path.exists(dest):
-        print(f"{pkg_name} is not installed. Use 'install {pkg_name}' first.")
-        return
-    print(f"Updating {pkg_name}...")
-    subprocess.run(["git", "-C", dest, "pull"])
-    print(f"{pkg_name} updated!")
+
+    if os.path.exists(dest):
+        print(f"{pkg_name} already installed. Pulling latest changes...")
+        subprocess.run(["git", "-C", dest, "pull"])
+        subprocess.run(["git", "-C", dest, "checkout", commit])
+    else:
+        os.makedirs(LIBS_DIR, exist_ok=True)
+        print(f"Installing {pkg_name} ({commit}) from {url}...")
+        subprocess.run(["git", "clone", url, dest])
+        subprocess.run(["git", "-C", dest, "checkout", commit])
+
+    update_cmake(pkg_name)
+    installed.add(pkg_name)
 
 def list_packages(packages):
     print("Available packages:")
     for name, info in packages.items():
-        print(f"- {name}: {info.get('description', '')}")
+        desc = info.get("description", "")
+        versions = ", ".join(info.get("versions", {}).keys())
+        deps = ", ".join(info.get("dependencies", []))
+        dep_str = f" (depends on: {deps})" if deps else ""
+        print(f"- {name}: {desc} (versions: {versions}){dep_str}")
+
+# --- Main CLI ---
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python cpp_pip.py [install|update|list] <package>")
+        print("Usage: python cpp_pip.py [install|list] <package> [version]")
         return
 
     command = sys.argv[1]
     packages = load_registry()
 
-    if command == "install" and len(sys.argv) == 3:
-        install_package(sys.argv[2], packages)
-    elif command == "update" and len(sys.argv) == 3:
-        update_package(sys.argv[2])
+    if command == "install" and len(sys.argv) >= 3:
+        pkg_name = sys.argv[2]
+        version = sys.argv[3] if len(sys.argv) >= 4 else "latest"
+        install_package(pkg_name, version, packages)
     elif command == "list":
         list_packages(packages)
     else:
-        print("Invalid command or missing package name.")
+        print("Invalid command.")
 
 if __name__ == "__main__":
     main()
