@@ -99,7 +99,7 @@ def list_packages(packages):
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python cpp_pip.py [install|list] <package> [version]")
+        print("Usage: pylib [install|list] <package> [version]")
         return
 
     command = sys.argv[1]
