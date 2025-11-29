@@ -16,5 +16,13 @@
       "latest": "develop"
     },
     "dependencies": []
+  },
+  "nbp": {
+    "url": "https://github.com/Aleksander-Sapieha/NBP-API-Cpp.git",
+    "description": "A wrapper for the NBP API",
+    "versions": {
+      "1.0.0-f": "v1.0.0-f",
+      "latest": "master"
+    }
   }
 }
